@@ -1,348 +1,215 @@
-class EncryptedMessage {
-    constructor() {
-        this.charTable = [
-            "!", "\"", "#", "$", "%", "&", "'", "(", ")", "*", "+", ",", "-", "~",
-            ".", "/", ":", ";", "<", "=", ">", "?", "[", "\\", "]", "_", "{", "}",
-            "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M",
-            "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
-            "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m",
-            "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z",
-            "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
-            "Ç", "ü", "é", "â", "ä", "à", "å", "ç", "ê", "ë", "è", "ï",
-            "î", "ì", "Ä", "Å", "É", "æ", "Æ", "ô", "ö", "ò", "û", "ù",
-            "ÿ", "Ö", "Ü", "¢", "£", "¥", "ƒ", "á", "í", "ó", "ú", "ñ",
-            "Ñ", "ª", "º", "¿", "¬", "½", "¼", "¡", "«", "»", "α", "ß",
-            "Γ", "π", "Σ", "σ", "µ", "τ", "Φ", "Θ", "Ω", "δ", "φ", "ε",
-            "±", "÷", "°", "·", "²", "¶", "⌐", "₧", "▒", "▓",
-            "│", "┤", "╡", "╢", "╖", "╕", "╣", "║", "╗", "╝", "╜", "╛",
-            "┐", "└", "┴", "┬", "├", "─", "┼", "╞", "╟", "╚", "╔", "╩",
-            "╦", "╠", "═", "╬", "╧", "╨", "╤", "╥", "╙", "╘", "╒", "╓",
-            "╫", "╪", "┘", "┌", "█", "▄", "▌", "▐", "▀"
-        ];
-        
-        this.menuElement = null;
-        this.scrollIndicator = null;
-        this.originalText = '';
-        this.messageText = '';
-        this.artText = '';
-        this.encryptedDisplayText = '';
-        this.promptText = '\nEnter để giải mã...';
-        this.isDecrypting = false;
-        this.intervals = [];
-        
-        this.init();
-    }
+// Khai báo các phần tử
+const openBtn = document.getElementById("openBtn");
+const resetBtn = document.getElementById("resetBtn");
+const envelope = document.getElementById("envelope");
+const letterContainer = document.getElementById("letter-container");
+const letterOverlay = document.getElementById("letter-overlay");
+const audio = document.getElementById("sound");
+const petalsContainer = document.getElementById("petals-container");
+const fwCanvas = document.getElementById("fireworks-canvas");
+const ctx = fwCanvas ? fwCanvas.getContext("2d") : null;
 
-    init() {
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.setup());
-        } else {
-            this.setup();
-        }
-    }
-
-    setup() {
-        this.menuElement = document.getElementById('menu');
-        this.scrollIndicator = document.getElementById('scrollIndicator');
-        const menuNormalElement = document.getElementById('menuNormal');
-        
-        if (!this.menuElement || !menuNormalElement) {
-            console.error('Required elements not found');
-            return;
-        }
-        
-        this.originalText = menuNormalElement.textContent.trim();
-        this.separateMessageAndArt();
-        this.setupScrollManagement();
-        
-        setTimeout(() => this.displayTerminal(), 2000);
-    }
-
-    setupScrollManagement() {
-        this.checkContentOverflow();
-        
-        window.addEventListener('scroll', () => {
-            this.handleScroll();
+let hasPlayed = false;
+let fireworkInterval = null;
+function playAudioOnce() {
+    if (!hasPlayed && audio) {
+        audio.play().then(() => {
+            hasPlayed = true;
+        }).catch((e) => {
+            console.log("Không thể phát nhạc:", e);
         });
-        
-        window.addEventListener('resize', () => {
-            this.checkContentOverflow();
-        });
-        
-        document.addEventListener('keydown', (event) => {
-            this.handleKeyboardScroll(event);
-        });
-    }
-
-    checkContentOverflow() {
-        const windowHeight = window.innerHeight;
-        const documentHeight = document.documentElement.scrollHeight;
-        
-        if (documentHeight > windowHeight) {
-            document.body.classList.add('show-scroll-indicator');
-        } else {
-            document.body.classList.remove('show-scroll-indicator');
-        }
-    }
-
-    handleScroll() {
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        const windowHeight = window.innerHeight;
-        const documentHeight = document.documentElement.scrollHeight;
-        
-        if (scrollTop + windowHeight >= documentHeight - 50) {
-            if (this.scrollIndicator) {
-                this.scrollIndicator.style.opacity = '0';
-            }
-        } else {
-            if (this.scrollIndicator) {
-                this.scrollIndicator.style.opacity = '0.8';
-            }
-        }
-    }
-
-    handleKeyboardScroll(event) {
-        if (this.isDecrypting || event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
-            return;
-        }
-
-        const scrollAmount = 100;
-        
-        switch(event.key) {
-            case 'ArrowDown':
-                event.preventDefault();
-                window.scrollBy(0, scrollAmount);
-                break;
-            case 'ArrowUp':
-                event.preventDefault();
-                window.scrollBy(0, -scrollAmount);
-                break;
-            case 'PageDown':
-                event.preventDefault();
-                window.scrollBy(0, window.innerHeight * 0.8);
-                break;
-            case 'PageUp':
-                event.preventDefault();
-                window.scrollBy(0, -window.innerHeight * 0.8);
-                break;
-            case 'Home':
-                event.preventDefault();
-                window.scrollTo(0, 0);
-                break;
-            case 'End':
-                event.preventDefault();
-                window.scrollTo(0, document.documentElement.scrollHeight);
-                break;
-        }
-    }
-
-    separateMessageAndArt() {
-        const lines = this.originalText.split('\n');
-        const artStartIndex = lines.findIndex(line => line.includes('⠀'));
-        
-        if (artStartIndex !== -1) {
-            this.messageText = lines.slice(0, artStartIndex).join('\n').trim();
-            this.artText = lines.slice(artStartIndex).join('\n');
-        } else {
-            this.messageText = this.originalText;
-            this.artText = '';
-        }
-    }
-
-    getRandomChar() {
-        return this.charTable[Math.floor(Math.random() * this.charTable.length)];
-    }
-
-    encryptText(text) {
-        return text.split('').map(char => {
-            if (char === ' ' || char === '\n') {
-                return char;
-            } else if (char === '⠀' || char.match(/^[\u2800-\u28FF]$/)) {
-                return this.getRandomChar();
-            } else {
-                return this.getRandomChar();
-            }
-        }).join('');
-    }
-
-    showMenu() {
-        if (this.menuElement) {
-            this.menuElement.classList.remove('hidden');
-            this.menuElement.classList.add('visible');
-            setTimeout(() => this.checkContentOverflow(), 100);
-        }
-    }
-
-    hideMenu() {
-        if (this.menuElement) {
-            this.menuElement.classList.add('hidden');
-            this.menuElement.classList.remove('visible');
-        }
-    }
-
-    displayCharacter(menuText, currentIndex = 0, decryptedText = '') {
-        if (currentIndex >= menuText.length) {
-            this.showDecryptPrompt(decryptedText);
-            return;
-        }
-
-        this.menuElement.innerHTML = decryptedText + '<span class="cursor"></span>';
-        decryptedText += menuText[currentIndex];
-        currentIndex++;
-
-        if (currentIndex % 50 === 0) {
-            this.autoScrollIfNeeded();
-        }
-
-        setTimeout(() => {
-            this.displayCharacter(menuText, currentIndex, decryptedText);
-        }, 10);
-    }
-
-    autoScrollIfNeeded() {
-        const windowHeight = window.innerHeight;
-        const documentHeight = document.documentElement.scrollHeight;
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-        
-        if (scrollTop + windowHeight >= documentHeight - 200) {
-            window.scrollTo({
-                top: documentHeight,
-                behavior: 'smooth'
-            });
-        }
-    }
-
-    showDecryptPrompt(encryptedText) {
-        this.encryptedDisplayText = encryptedText;
-        const promptIndex = 0;
-        this.typePrompt(encryptedText, this.promptText, promptIndex);
-    }
-
-    typePrompt(baseText, promptText, currentIndex) {
-        if (currentIndex >= promptText.length) {
-            this.menuElement.innerHTML = baseText + promptText + '<span class="cursor"></span>';
-            this.setupDecryptionListener();
-            return;
-        }
-
-        const currentPrompt = promptText.substring(0, currentIndex + 1);
-        this.menuElement.innerHTML = baseText + currentPrompt + '<span class="cursor"></span>';
-        
-        setTimeout(() => {
-            this.typePrompt(baseText, promptText, currentIndex + 1);
-        }, 50);
-    }
-
-    setupDecryptionListener() {
-        const handleKeyDown = (event) => {
-            if (event.key === "Enter" && !this.isDecrypting) {
-                this.isDecrypting = true;
-                this.menuElement.textContent = this.encryptedDisplayText;
-                this.randomizeText();
-                document.removeEventListener('keydown', handleKeyDown);
-            }
-        };
-
-        document.addEventListener('keydown', handleKeyDown);
-    }
-
-    randomizeText() {
-        let randomizeCount = 0;
-        const maxRandomizations = 100;
-        
-        const randomizeInterval = setInterval(() => {
-            if (randomizeCount >= maxRandomizations) {
-                clearInterval(randomizeInterval);
-                this.startDecryption();
-                return;
-            }
-            
-            this.menuElement.textContent = this.encryptText(this.originalText);
-            randomizeCount++;
-        }, 10);
-
-        this.intervals.push(randomizeInterval);
-
-        setTimeout(() => {
-            clearInterval(randomizeInterval);
-            this.startDecryption();
-        }, 1000);
-    }
-
-    startDecryption() {
-        let isArtRevealed = false;
-        
-        const decryptChar = () => {
-            const currentText = this.menuElement.textContent;
-            
-            if (currentText === this.originalText) {
-                this.scrollToShowCompleteContent();
-                return;
-            }
-
-            const mismatchedIndices = [];
-            
-            if (!isArtRevealed) {
-                for (let i = 0; i < this.messageText.length; i++) {
-                    if (currentText[i] !== this.originalText[i]) {
-                        mismatchedIndices.push(i);
-                    }
-                }
-                
-                if (mismatchedIndices.length === 0) {
-                    isArtRevealed = true;
-                }
-            } else {
-                for (let i = this.messageText.length; i < this.originalText.length; i++) {
-                    if (currentText[i] !== this.originalText[i]) {
-                        mismatchedIndices.push(i);
-                    }
-                }
-            }
-
-            if (mismatchedIndices.length > 0) {
-                const randomIndex = mismatchedIndices[Math.floor(Math.random() * mismatchedIndices.length)];
-                const newText = currentText.substring(0, randomIndex) +
-                    this.originalText[randomIndex] +
-                    currentText.substring(randomIndex + 1);
-                this.menuElement.textContent = newText;
-            }
-
-            if (currentText !== this.originalText) {
-                setTimeout(decryptChar, isArtRevealed ? 8 : 2);
-            }
-        };
-
-        decryptChar();
-    }
-
-    scrollToShowCompleteContent() {
-        setTimeout(() => {
-            window.scrollTo({
-                top: document.documentElement.scrollHeight,
-                behavior: 'smooth'
-            });
-        }, 500);
-    }
-
-    displayTerminal() {
-        const encryptedText = this.encryptText(this.originalText);
-        this.showMenu();
-        this.displayCharacter(encryptedText);
-    }
-
-    destroy() {
-        this.intervals.forEach(interval => clearInterval(interval));
-        this.intervals = [];
-        window.removeEventListener('scroll', this.handleScroll);
-        window.removeEventListener('resize', this.checkContentOverflow);
     }
 }
 
-const encryptedMessage = new EncryptedMessage();
+function createPetal() {
+    if (!petalsContainer) return;
 
-window.addEventListener('beforeunload', () => {
-    if (encryptedMessage) {
-        encryptedMessage.destroy();
+    const petal = document.createElement("div");
+    petal.classList.add("petal");
+
+    const size = Math.random() * 15 + 10;
+    petal.style.width = `${size}px`;
+    petal.style.height = `${size * 0.8}px`;
+
+    // Vị trí rơi ngẫu nhiên theo chiều ngang màn hình
+    petal.style.left = `${Math.random() * 100}vw`;
+
+    const sway = (Math.random() - 0.5) * 220;
+    petal.style.setProperty("--sway", `${sway}px`);
+
+    const duration = Math.random() * 4 + 3.5;
+    petal.style.animationDuration = `${duration}s`;
+
+    petalsContainer.appendChild(petal);
+
+    setTimeout(() => {
+        petal.remove();
+    }, duration * 1000);
+}
+
+// Khởi tạo hoa rơi liên tục ngay khi vào trang
+setInterval(createPetal, 320);
+for (let i = 0; i < 12; i++) {
+    setTimeout(createPetal, i * 180);
+}
+let particles = [];
+
+function resizeCanvas() {
+    if (!fwCanvas) return;
+    fwCanvas.width = window.innerWidth;
+    fwCanvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resizeCanvas);
+resizeCanvas();
+
+const fwColors = [
+    "#ff6b8b", "#ff8e9e", "#ffd166", "#ff4d6d",
+    "#f9c74f", "#e0aaff", "#ff99c8", "#ffffff"
+];
+
+class FireworkParticle {
+    constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 5.5 + 1.5;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.alpha = 1;
+        this.decay = Math.random() * 0.016 + 0.012;
+        this.gravity = 0.045;
+        this.size = Math.random() * 2.8 + 1.5;
     }
-});
+
+    update() {
+        this.vx *= 0.98;
+        this.vy *= 0.98;
+        this.vy += this.gravity;
+        this.x += this.vx;
+        this.y += this.vy;
+        this.alpha -= this.decay;
+    }
+
+    draw() {
+        if (!ctx) return;
+        ctx.save();
+        ctx.globalAlpha = Math.max(this.alpha, 0);
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+function spawnFireworkBurst(x, y) {
+    const count = 42;
+    const baseColor = fwColors[Math.floor(Math.random() * fwColors.length)];
+    for (let i = 0; i < count; i++) {
+        const color = Math.random() > 0.35
+            ? baseColor
+            : fwColors[Math.floor(Math.random() * fwColors.length)];
+        particles.push(new FireworkParticle(x, y, color));
+    }
+}
+
+function launchSurroundingFirework() {
+    if (!fwCanvas) return;
+    const w = fwCanvas.width;
+    const h = fwCanvas.height;
+
+    const side = Math.random();
+    let x, y;
+    if (side < 0.4) {
+        x = w * (0.08 + Math.random() * 0.2); 
+        y = h * (0.15 + Math.random() * 0.55);
+    } else if (side < 0.8) {
+        x = w * (0.72 + Math.random() * 0.2); 
+        y = h * (0.15 + Math.random() * 0.55);
+    } else {
+        x = w * (0.25 + Math.random() * 0.5); 
+        y = h * (0.08 + Math.random() * 0.18);
+    }
+    spawnFireworkBurst(x, y);
+}
+
+function animateFireworks() {
+    if (ctx && fwCanvas) {
+        ctx.clearRect(0, 0, fwCanvas.width, fwCanvas.height);
+        for (let i = particles.length - 1; i >= 0; i--) {
+            particles[i].update();
+            particles[i].draw();
+            if (particles[i].alpha <= 0) {
+                particles.splice(i, 1);
+            }
+        }
+    }
+    requestAnimationFrame(animateFireworks);
+}
+animateFireworks();
+
+function openLetter() {
+    if (envelope) {
+        envelope.classList.remove("close");
+        envelope.classList.add("open");
+    }
+
+    if (openBtn) openBtn.style.display = "none";
+    if (resetBtn) resetBtn.style.display = "inline-block";
+
+    playAudioOnce();
+
+    // Bắn loạt pháo hoa chào mừng ngay khi bấm Mở
+    for (let i = 0; i < 5; i++) {
+        setTimeout(launchSurroundingFirework, i * 260);
+    }
+
+    if (fireworkInterval) clearInterval(fireworkInterval);
+    fireworkInterval = setInterval(launchSurroundingFirework, 1200);
+
+    setTimeout(() => {
+        if (letterContainer) letterContainer.classList.add("show");
+        if (letterOverlay) letterOverlay.classList.add("active");
+    }, 150);
+}
+function closeLetter() {
+    if (letterContainer) letterContainer.classList.remove("show");
+    if (letterOverlay) letterOverlay.classList.remove("active");
+    if (fireworkInterval) {
+        clearInterval(fireworkInterval);
+        fireworkInterval = null;
+    }
+
+    setTimeout(() => {
+        if (envelope) {
+            envelope.classList.remove("open");
+            envelope.classList.add("close");
+        }
+    }, 200);
+
+    if (openBtn) openBtn.style.display = "inline-block";
+    if (resetBtn) resetBtn.style.display = "none";
+}
+
+if (openBtn) {
+    openBtn.addEventListener("click", openLetter);
+}
+
+if (envelope) {
+    envelope.addEventListener("click", function () {
+        if (envelope.classList.contains("close")) {
+            openLetter();
+        }
+    });
+}
+
+if (resetBtn) {
+    resetBtn.addEventListener("click", closeLetter);
+}
+
+if (letterOverlay) {
+    letterOverlay.addEventListener("click", closeLetter);
+}
